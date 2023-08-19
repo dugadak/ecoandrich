@@ -1,101 +1,77 @@
-CREATE TABLE regions (
-	region_id INT NOT NULL,
-	region_name VARCHAR(25),
-	PRIMARY KEY (region_id)
-);
+create schema if not exists public;
 
-CREATE TABLE countries (
-	country_id CHAR(2) NOT NULL,
-	country_name VARCHAR(40),
-	region_id INT NOT NULL,
-	PRIMARY KEY (country_id)
-);
+set search_path to public;
 
-CREATE TABLE locations (
-	location_id SERIAL NOT NULL,
-	street_address VARCHAR(40),
-	postal_code VARCHAR(12),
-	city VARCHAR(30) NOT NULL,
-	state_province VARCHAR(25),
-	country_id CHAR(2) NOT NULL,
-	PRIMARY KEY (location_id)
-);
+BEGIN; 
 
-CREATE TABLE departments (
-	department_id INT NOT NULL,
-	department_name VARCHAR(30) NOT NULL,
-	manager_id INT,
-	location_id INT,
-	PRIMARY KEY (department_id)
-);
+CREATE TABLE regions
+    ( region_id      SERIAL primary key,       
+      region_name    VARCHAR(25) 
+    );
 
-CREATE TABLE jobs (
-	job_id VARCHAR(10) NOT NULL,
-	job_title VARCHAR(35) NOT NULL,
-	min_salary DECIMAL(8, 0),
-	max_salary DECIMAL(8, 0),
-	PRIMARY KEY (job_id)
-);
+CREATE TABLE countries 
+    ( country_id      CHAR(2) not null PRIMARY KEY       
+    , country_name    VARCHAR(40) 
+    , region_id       INTEGER  REFERENCES regions(region_id)
+    ); 
 
-CREATE TABLE employees (
-	employee_id INT NOT NULL,
-	first_name VARCHAR(20),
-	last_name VARCHAR(25) NOT NULL,
-	email VARCHAR(25) NOT NULL,
-	phone_number VARCHAR(20),
-	hire_date DATE NOT NULL,
-	job_id VARCHAR(10) NOT NULL,
-	salary DECIMAL(8, 2) NOT NULL,
-	commission_pct DECIMAL(2, 2),
-	manager_id INT,
-	department_id INT,
-	PRIMARY KEY (employee_id)
-);
+CREATE TABLE locations
+    ( location_id    SERIAL PRIMARY KEY
+    , street_address VARCHAR(40)
+    , postal_code    VARCHAR(12)
+    , city       VARCHAR(30) NOT NULL        
+    , state_province VARCHAR(25)
+    , country_id     CHAR(2) REFERENCES countries (country_id)
+    ) ;
 
-CREATE TABLE job_history (
-	employee_id INT NOT NULL,
-	start_date DATE NOT NULL,
-	end_date DATE NOT NULL,
-	job_id VARCHAR(10) NOT NULL,
-	department_id INT NOT NULL
-);
+CREATE TABLE departments
+    ( department_id    SERIAL PRIMARY KEY
+    , department_name  VARCHAR(30) NOT NULL        
+    , manager_id       INTEGER
+    , location_id      INTEGER references locations (location_id)
+    ) ;
 
+CREATE TABLE jobs
+    ( job_id         VARCHAR(10) PRIMARY KEY
+    , job_title      VARCHAR(35) NOT NULL
+    , min_salary     NUMERIC(6)
+    , max_salary     NUMERIC(6)
+    ) ;
 
+CREATE TABLE employees
+    ( employee_id    SERIAL PRIMARY KEY
+    , first_name     VARCHAR(20)
+    , last_name      VARCHAR(25) NOT NULL
+    , email          VARCHAR(25) NOT NULL
+    , phone_number   VARCHAR(20)
+    , hire_date      TIMESTAMP  NOT NULL
+    , job_id         VARCHAR(10) NOT NULL REFERENCES jobs(job_id)
+    , salary         NUMERIC(8,2)
+    , commission_pct NUMERIC(2,2)
+    , manager_id     INTEGER REFERENCES employees(employee_id)
+    , department_id  INTEGER REFERENCES departments(department_id)
+    , CONSTRAINT     emp_salary_min
+                     CHECK (salary > 0) 
+    , CONSTRAINT     emp_email_uk
+                     UNIQUE (email)
+    ) ;
 
+ALTER TABLE DEPARTMENTS ADD CONSTRAINT dept_mgr_fk
+                 FOREIGN KEY (manager_id)
+                  REFERENCES employees (employee_id);
 
-CREATE VIEW emp_details_view AS
-SELECT e.employee_id,
-    e.job_id,
-    e.manager_id,
-    e.department_id,
-    d.location_id,
-    l.country_id,
-    e.first_name,
-    e.last_name,
-    e.salary,
-    e.commission_pct,
-    d.department_name,
-    j.job_title,
-    l.city,
-    l.state_province,
-    c.country_name,
-    r.region_name
-FROM employees e,
-    departments d,
-    jobs j,
-    locations l,
-    countries c,
-    regions r
-WHERE e.department_id = d.department_id
-    AND d.location_id = l.location_id
-    AND l.country_id = c.country_id
-    AND c.region_id = r.region_id
-    AND j.job_id = e.job_id;
+CREATE TABLE job_history
+    ( employee_id   INTEGER NOT NULL REFERENCES employees(employee_id)
+    , start_date    TIMESTAMP NOT NULL
+    , end_date      TIMESTAMP NOT NULL        
+    , job_id        VARCHAR(10) NOT NULL REFERENCES jobs(job_id)
+    , department_id INTEGER REFERENCES departments(department_id)
+    , CONSTRAINT    jhist_date_interval
+                    CHECK (end_date > start_date)
+    , PRIMARY KEY (employee_id, start_date)
+    ) ;
 
 
-/* *************************************************************** 
-***************************INSERTING DATA*************************
-**************************************************************** */
 INSERT INTO regions
 VALUES (
 	1,
@@ -529,9 +505,9 @@ VALUES (
 	'MX'
 	);
 
-COMMIT;
 
-SET FOREIGN_KEY_CHECKS = 0;
+ALTER TABLE departments 
+  DROP CONSTRAINT dept_mgr_fk;
 
 INSERT INTO departments
 VALUES (
@@ -749,9 +725,6 @@ VALUES (
 	1700
 	);
 
-SET FOREIGN_KEY_CHECKS = 1;
-
-COMMIT;
 
 INSERT INTO jobs
 VALUES (
@@ -905,8 +878,6 @@ VALUES (
 	10500
 	);
 
-COMMIT;
-
 INSERT INTO employees
 VALUES (
 	100,
@@ -914,7 +885,7 @@ VALUES (
 	'King',
 	'SKING',
 	'515.123.4567',
-	STR_TO_DATE('17-JUN-1987', '%d-%M-%Y'),
+	TO_DATE('17-JUN-1987', 'dd-MON-yyyy'),
 	'AD_PRES',
 	24000,
 	NULL,
@@ -929,7 +900,7 @@ VALUES (
 	'Kochhar',
 	'NKOCHHAR',
 	'515.123.4568',
-	STR_TO_DATE('21-SEP-1989', '%d-%M-%Y'),
+	TO_DATE('21-SEP-1989', 'dd-MON-yyyy'),
 	'AD_VP',
 	17000,
 	NULL,
@@ -944,7 +915,7 @@ VALUES (
 	'De Haan',
 	'LDEHAAN',
 	'515.123.4569',
-	STR_TO_DATE('13-JAN-1993', '%d-%M-%Y'),
+	TO_DATE('13-JAN-1993', 'dd-MON-yyyy'),
 	'AD_VP',
 	17000,
 	NULL,
@@ -959,7 +930,7 @@ VALUES (
 	'Hunold',
 	'AHUNOLD',
 	'590.423.4567',
-	STR_TO_DATE('03-JAN-1990', '%d-%M-%Y'),
+	TO_DATE('03-JAN-1990', 'dd-MON-yyyy'),
 	'IT_PROG',
 	9000,
 	NULL,
@@ -974,7 +945,7 @@ VALUES (
 	'Ernst',
 	'BERNST',
 	'590.423.4568',
-	STR_TO_DATE('21-MAY-1991', '%d-%M-%Y'),
+	TO_DATE('21-MAY-1991', 'dd-MON-yyyy'),
 	'IT_PROG',
 	6000,
 	NULL,
@@ -989,7 +960,7 @@ VALUES (
 	'Austin',
 	'DAUSTIN',
 	'590.423.4569',
-	STR_TO_DATE('25-JUN-1997', '%d-%M-%Y'),
+	TO_DATE('25-JUN-1997', 'dd-MON-yyyy'),
 	'IT_PROG',
 	4800,
 	NULL,
@@ -1004,7 +975,7 @@ VALUES (
 	'Pataballa',
 	'VPATABAL',
 	'590.423.4560',
-	STR_TO_DATE('05-FEB-1998', '%d-%M-%Y'),
+	TO_DATE('05-FEB-1998', 'dd-MON-yyyy'),
 	'IT_PROG',
 	4800,
 	NULL,
@@ -1019,7 +990,7 @@ VALUES (
 	'Lorentz',
 	'DLORENTZ',
 	'590.423.5567',
-	STR_TO_DATE('07-FEB-1999', '%d-%M-%Y'),
+	TO_DATE('07-FEB-1999', 'dd-MON-yyyy'),
 	'IT_PROG',
 	4200,
 	NULL,
@@ -1034,7 +1005,7 @@ VALUES (
 	'Greenberg',
 	'NGREENBE',
 	'515.124.4569',
-	STR_TO_DATE('17-AUG-1994', '%d-%M-%Y'),
+	TO_DATE('17-AUG-1994', 'dd-MON-yyyy'),
 	'FI_MGR',
 	12000,
 	NULL,
@@ -1049,7 +1020,7 @@ VALUES (
 	'Faviet',
 	'DFAVIET',
 	'515.124.4169',
-	STR_TO_DATE('16-AUG-1994', '%d-%M-%Y'),
+	TO_DATE('16-AUG-1994', 'dd-MON-yyyy'),
 	'FI_ACCOUNT',
 	9000,
 	NULL,
@@ -1064,7 +1035,7 @@ VALUES (
 	'Chen',
 	'JCHEN',
 	'515.124.4269',
-	STR_TO_DATE('28-SEP-1997', '%d-%M-%Y'),
+	TO_DATE('28-SEP-1997', 'dd-MON-yyyy'),
 	'FI_ACCOUNT',
 	8200,
 	NULL,
@@ -1079,7 +1050,7 @@ VALUES (
 	'Sciarra',
 	'ISCIARRA',
 	'515.124.4369',
-	STR_TO_DATE('30-SEP-1997', '%d-%M-%Y'),
+	TO_DATE('30-SEP-1997', 'dd-MON-yyyy'),
 	'FI_ACCOUNT',
 	7700,
 	NULL,
@@ -1094,7 +1065,7 @@ VALUES (
 	'Urman',
 	'JMURMAN',
 	'515.124.4469',
-	STR_TO_DATE('07-MAR-1998', '%d-%M-%Y'),
+	TO_DATE('07-MAR-1998', 'dd-MON-yyyy'),
 	'FI_ACCOUNT',
 	7800,
 	NULL,
@@ -1109,7 +1080,7 @@ VALUES (
 	'Popp',
 	'LPOPP',
 	'515.124.4567',
-	STR_TO_DATE('07-DEC-1999', '%d-%M-%Y'),
+	TO_DATE('07-DEC-1999', 'dd-MON-yyyy'),
 	'FI_ACCOUNT',
 	6900,
 	NULL,
@@ -1124,7 +1095,7 @@ VALUES (
 	'Raphaely',
 	'DRAPHEAL',
 	'515.127.4561',
-	STR_TO_DATE('07-DEC-1994', '%d-%M-%Y'),
+	TO_DATE('07-DEC-1994', 'dd-MON-yyyy'),
 	'PU_MAN',
 	11000,
 	NULL,
@@ -1139,7 +1110,7 @@ VALUES (
 	'Khoo',
 	'AKHOO',
 	'515.127.4562',
-	STR_TO_DATE('18-MAY-1995', '%d-%M-%Y'),
+	TO_DATE('18-MAY-1995', 'dd-MON-yyyy'),
 	'PU_CLERK',
 	3100,
 	NULL,
@@ -1154,7 +1125,7 @@ VALUES (
 	'Baida',
 	'SBAIDA',
 	'515.127.4563',
-	STR_TO_DATE('24-DEC-1997', '%d-%M-%Y'),
+	TO_DATE('24-DEC-1997', 'dd-MON-yyyy'),
 	'PU_CLERK',
 	2900,
 	NULL,
@@ -1169,7 +1140,7 @@ VALUES (
 	'Tobias',
 	'STOBIAS',
 	'515.127.4564',
-	STR_TO_DATE('24-JUL-1997', '%d-%M-%Y'),
+	TO_DATE('24-JUL-1997', 'dd-MON-yyyy'),
 	'PU_CLERK',
 	2800,
 	NULL,
@@ -1184,7 +1155,7 @@ VALUES (
 	'Himuro',
 	'GHIMURO',
 	'515.127.4565',
-	STR_TO_DATE('15-NOV-1998', '%d-%M-%Y'),
+	TO_DATE('15-NOV-1998', 'dd-MON-yyyy'),
 	'PU_CLERK',
 	2600,
 	NULL,
@@ -1199,7 +1170,7 @@ VALUES (
 	'Colmenares',
 	'KCOLMENA',
 	'515.127.4566',
-	STR_TO_DATE('10-AUG-1999', '%d-%M-%Y'),
+	TO_DATE('10-AUG-1999', 'dd-MON-yyyy'),
 	'PU_CLERK',
 	2500,
 	NULL,
@@ -1214,7 +1185,7 @@ VALUES (
 	'Weiss',
 	'MWEISS',
 	'650.123.1234',
-	STR_TO_DATE('18-JUL-1996', '%d-%M-%Y'),
+	TO_DATE('18-JUL-1996', 'dd-MON-yyyy'),
 	'ST_MAN',
 	8000,
 	NULL,
@@ -1229,7 +1200,7 @@ VALUES (
 	'Fripp',
 	'AFRIPP',
 	'650.123.2234',
-	STR_TO_DATE('10-APR-1997', '%d-%M-%Y'),
+	TO_DATE('10-APR-1997', 'dd-MON-yyyy'),
 	'ST_MAN',
 	8200,
 	NULL,
@@ -1244,7 +1215,7 @@ VALUES (
 	'Kaufling',
 	'PKAUFLIN',
 	'650.123.3234',
-	STR_TO_DATE('01-MAY-1995', '%d-%M-%Y'),
+	TO_DATE('01-MAY-1995', 'dd-MON-yyyy'),
 	'ST_MAN',
 	7900,
 	NULL,
@@ -1259,7 +1230,7 @@ VALUES (
 	'Vollman',
 	'SVOLLMAN',
 	'650.123.4234',
-	STR_TO_DATE('10-OCT-1997', '%d-%M-%Y'),
+	TO_DATE('10-OCT-1997', 'dd-MON-yyyy'),
 	'ST_MAN',
 	6500,
 	NULL,
@@ -1274,7 +1245,7 @@ VALUES (
 	'Mourgos',
 	'KMOURGOS',
 	'650.123.5234',
-	STR_TO_DATE('16-NOV-1999', '%d-%M-%Y'),
+	TO_DATE('16-NOV-1999', 'dd-MON-yyyy'),
 	'ST_MAN',
 	5800,
 	NULL,
@@ -1289,7 +1260,7 @@ VALUES (
 	'Nayer',
 	'JNAYER',
 	'650.124.1214',
-	STR_TO_DATE('16-JUL-1997', '%d-%M-%Y'),
+	TO_DATE('16-JUL-1997', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3200,
 	NULL,
@@ -1304,7 +1275,7 @@ VALUES (
 	'Mikkilineni',
 	'IMIKKILI',
 	'650.124.1224',
-	STR_TO_DATE('28-SEP-1998', '%d-%M-%Y'),
+	TO_DATE('28-SEP-1998', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2700,
 	NULL,
@@ -1319,7 +1290,7 @@ VALUES (
 	'Landry',
 	'JLANDRY',
 	'650.124.1334',
-	STR_TO_DATE('14-JAN-1999', '%d-%M-%Y'),
+	TO_DATE('14-JAN-1999', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2400,
 	NULL,
@@ -1334,7 +1305,7 @@ VALUES (
 	'Markle',
 	'SMARKLE',
 	'650.124.1434',
-	STR_TO_DATE('08-MAR-2000', '%d-%M-%Y'),
+	TO_DATE('08-MAR-2000', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2200,
 	NULL,
@@ -1349,7 +1320,7 @@ VALUES (
 	'Bissot',
 	'LBISSOT',
 	'650.124.5234',
-	STR_TO_DATE('20-AUG-1997', '%d-%M-%Y'),
+	TO_DATE('20-AUG-1997', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3300,
 	NULL,
@@ -1364,7 +1335,7 @@ VALUES (
 	'Atkinson',
 	'MATKINSO',
 	'650.124.6234',
-	STR_TO_DATE('30-OCT-1997', '%d-%M-%Y'),
+	TO_DATE('30-OCT-1997', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2800,
 	NULL,
@@ -1379,7 +1350,7 @@ VALUES (
 	'Marlow',
 	'JAMRLOW',
 	'650.124.7234',
-	STR_TO_DATE('16-FEB-1997', '%d-%M-%Y'),
+	TO_DATE('16-FEB-1997', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2500,
 	NULL,
@@ -1394,7 +1365,7 @@ VALUES (
 	'Olson',
 	'TJOLSON',
 	'650.124.8234',
-	STR_TO_DATE('10-APR-1999', '%d-%M-%Y'),
+	TO_DATE('10-APR-1999', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2100,
 	NULL,
@@ -1409,7 +1380,7 @@ VALUES (
 	'Mallin',
 	'JMALLIN',
 	'650.127.1934',
-	STR_TO_DATE('14-JUN-1996', '%d-%M-%Y'),
+	TO_DATE('14-JUN-1996', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3300,
 	NULL,
@@ -1424,7 +1395,7 @@ VALUES (
 	'Rogers',
 	'MROGERS',
 	'650.127.1834',
-	STR_TO_DATE('26-AUG-1998', '%d-%M-%Y'),
+	TO_DATE('26-AUG-1998', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2900,
 	NULL,
@@ -1439,7 +1410,7 @@ VALUES (
 	'Gee',
 	'KGEE',
 	'650.127.1734',
-	STR_TO_DATE('12-DEC-1999', '%d-%M-%Y'),
+	TO_DATE('12-DEC-1999', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2400,
 	NULL,
@@ -1454,7 +1425,7 @@ VALUES (
 	'Philtanker',
 	'HPHILTAN',
 	'650.127.1634',
-	STR_TO_DATE('06-FEB-2000', '%d-%M-%Y'),
+	TO_DATE('06-FEB-2000', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2200,
 	NULL,
@@ -1469,7 +1440,7 @@ VALUES (
 	'Ladwig',
 	'RLADWIG',
 	'650.121.1234',
-	STR_TO_DATE('14-JUL-1995', '%d-%M-%Y'),
+	TO_DATE('14-JUL-1995', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3600,
 	NULL,
@@ -1484,7 +1455,7 @@ VALUES (
 	'Stiles',
 	'SSTILES',
 	'650.121.2034',
-	STR_TO_DATE('26-OCT-1997', '%d-%M-%Y'),
+	TO_DATE('26-OCT-1997', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3200,
 	NULL,
@@ -1499,7 +1470,7 @@ VALUES (
 	'Seo',
 	'JSEO',
 	'650.121.2019',
-	STR_TO_DATE('12-FEB-1998', '%d-%M-%Y'),
+	TO_DATE('12-FEB-1998', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2700,
 	NULL,
@@ -1514,7 +1485,7 @@ VALUES (
 	'Patel',
 	'JPATEL',
 	'650.121.1834',
-	STR_TO_DATE('06-APR-1998', '%d-%M-%Y'),
+	TO_DATE('06-APR-1998', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2500,
 	NULL,
@@ -1529,7 +1500,7 @@ VALUES (
 	'Rajs',
 	'TRAJS',
 	'650.121.8009',
-	STR_TO_DATE('17-OCT-1995', '%d-%M-%Y'),
+	TO_DATE('17-OCT-1995', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3500,
 	NULL,
@@ -1544,7 +1515,7 @@ VALUES (
 	'Davies',
 	'CDAVIES',
 	'650.121.2994',
-	STR_TO_DATE('29-JAN-1997', '%d-%M-%Y'),
+	TO_DATE('29-JAN-1997', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	3100,
 	NULL,
@@ -1559,7 +1530,7 @@ VALUES (
 	'Matos',
 	'RMATOS',
 	'650.121.2874',
-	STR_TO_DATE('15-MAR-1998', '%d-%M-%Y'),
+	TO_DATE('15-MAR-1998', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2600,
 	NULL,
@@ -1574,7 +1545,7 @@ VALUES (
 	'Vargas',
 	'PVARGAS',
 	'650.121.2004',
-	STR_TO_DATE('09-JUL-1998', '%d-%M-%Y'),
+	TO_DATE('09-JUL-1998', 'dd-MON-yyyy'),
 	'ST_CLERK',
 	2500,
 	NULL,
@@ -1589,7 +1560,7 @@ VALUES (
 	'Russell',
 	'JRUSSEL',
 	'011.44.1344.429268',
-	STR_TO_DATE('01-OCT-1996', '%d-%M-%Y'),
+	TO_DATE('01-OCT-1996', 'dd-MON-yyyy'),
 	'SA_MAN',
 	14000,
 	.4,
@@ -1604,7 +1575,7 @@ VALUES (
 	'Partners',
 	'KPARTNER',
 	'011.44.1344.467268',
-	STR_TO_DATE('05-JAN-1997', '%d-%M-%Y'),
+	TO_DATE('05-JAN-1997', 'dd-MON-yyyy'),
 	'SA_MAN',
 	13500,
 	.3,
@@ -1619,7 +1590,7 @@ VALUES (
 	'Errazuriz',
 	'AERRAZUR',
 	'011.44.1344.429278',
-	STR_TO_DATE('10-MAR-1997', '%d-%M-%Y'),
+	TO_DATE('10-MAR-1997', 'dd-MON-yyyy'),
 	'SA_MAN',
 	12000,
 	.3,
@@ -1634,7 +1605,7 @@ VALUES (
 	'Cambrault',
 	'GCAMBRAU',
 	'011.44.1344.619268',
-	STR_TO_DATE('15-OCT-1999', '%d-%M-%Y'),
+	TO_DATE('15-OCT-1999', 'dd-MON-yyyy'),
 	'SA_MAN',
 	11000,
 	.3,
@@ -1649,7 +1620,7 @@ VALUES (
 	'Zlotkey',
 	'EZLOTKEY',
 	'011.44.1344.429018',
-	STR_TO_DATE('29-JAN-2000', '%d-%M-%Y'),
+	TO_DATE('29-JAN-2000', 'dd-MON-yyyy'),
 	'SA_MAN',
 	10500,
 	.2,
@@ -1664,7 +1635,7 @@ VALUES (
 	'Tucker',
 	'PTUCKER',
 	'011.44.1344.129268',
-	STR_TO_DATE('30-JAN-1997', '%d-%M-%Y'),
+	TO_DATE('30-JAN-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	10000,
 	.3,
@@ -1679,7 +1650,7 @@ VALUES (
 	'Bernstein',
 	'DBERNSTE',
 	'011.44.1344.345268',
-	STR_TO_DATE('24-MAR-1997', '%d-%M-%Y'),
+	TO_DATE('24-MAR-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	9500,
 	.25,
@@ -1694,7 +1665,7 @@ VALUES (
 	'Hall',
 	'PHALL',
 	'011.44.1344.478968',
-	STR_TO_DATE('20-AUG-1997', '%d-%M-%Y'),
+	TO_DATE('20-AUG-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	9000,
 	.25,
@@ -1709,7 +1680,7 @@ VALUES (
 	'Olsen',
 	'COLSEN',
 	'011.44.1344.498718',
-	STR_TO_DATE('30-MAR-1998', '%d-%M-%Y'),
+	TO_DATE('30-MAR-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	8000,
 	.2,
@@ -1724,7 +1695,7 @@ VALUES (
 	'Cambrault',
 	'NCAMBRAU',
 	'011.44.1344.987668',
-	STR_TO_DATE('09-DEC-1998', '%d-%M-%Y'),
+	TO_DATE('09-DEC-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	7500,
 	.2,
@@ -1739,7 +1710,7 @@ VALUES (
 	'Tuvault',
 	'OTUVAULT',
 	'011.44.1344.486508',
-	STR_TO_DATE('23-NOV-1999', '%d-%M-%Y'),
+	TO_DATE('23-NOV-1999', 'dd-MON-yyyy'),
 	'SA_REP',
 	7000,
 	.15,
@@ -1754,7 +1725,7 @@ VALUES (
 	'King',
 	'JKING',
 	'011.44.1345.429268',
-	STR_TO_DATE('30-JAN-1996', '%d-%M-%Y'),
+	TO_DATE('30-JAN-1996', 'dd-MON-yyyy'),
 	'SA_REP',
 	10000,
 	.35,
@@ -1769,7 +1740,7 @@ VALUES (
 	'Sully',
 	'PSULLY',
 	'011.44.1345.929268',
-	STR_TO_DATE('04-MAR-1996', '%d-%M-%Y'),
+	TO_DATE('04-MAR-1996', 'dd-MON-yyyy'),
 	'SA_REP',
 	9500,
 	.35,
@@ -1784,7 +1755,7 @@ VALUES (
 	'McEwen',
 	'AMCEWEN',
 	'011.44.1345.829268',
-	STR_TO_DATE('01-AUG-1996', '%d-%M-%Y'),
+	TO_DATE('01-AUG-1996', 'dd-MON-yyyy'),
 	'SA_REP',
 	9000,
 	.35,
@@ -1799,7 +1770,7 @@ VALUES (
 	'Smith',
 	'LSMITH',
 	'011.44.1345.729268',
-	STR_TO_DATE('10-MAR-1997', '%d-%M-%Y'),
+	TO_DATE('10-MAR-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	8000,
 	.3,
@@ -1814,7 +1785,7 @@ VALUES (
 	'Doran',
 	'LDORAN',
 	'011.44.1345.629268',
-	STR_TO_DATE('15-DEC-1997', '%d-%M-%Y'),
+	TO_DATE('15-DEC-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	7500,
 	.3,
@@ -1829,7 +1800,7 @@ VALUES (
 	'Sewall',
 	'SSEWALL',
 	'011.44.1345.529268',
-	STR_TO_DATE('03-NOV-1998', '%d-%M-%Y'),
+	TO_DATE('03-NOV-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	7000,
 	.25,
@@ -1844,7 +1815,7 @@ VALUES (
 	'Vishney',
 	'CVISHNEY',
 	'011.44.1346.129268',
-	STR_TO_DATE('11-NOV-1997', '%d-%M-%Y'),
+	TO_DATE('11-NOV-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	10500,
 	.25,
@@ -1859,7 +1830,7 @@ VALUES (
 	'Greene',
 	'DGREENE',
 	'011.44.1346.229268',
-	STR_TO_DATE('19-MAR-1999', '%d-%M-%Y'),
+	TO_DATE('19-MAR-1999', 'dd-MON-yyyy'),
 	'SA_REP',
 	9500,
 	.15,
@@ -1874,7 +1845,7 @@ VALUES (
 	'Marvins',
 	'MMARVINS',
 	'011.44.1346.329268',
-	STR_TO_DATE('24-JAN-2000', '%d-%M-%Y'),
+	TO_DATE('24-JAN-2000', 'dd-MON-yyyy'),
 	'SA_REP',
 	7200,
 	.10,
@@ -1889,7 +1860,7 @@ VALUES (
 	'Lee',
 	'DLEE',
 	'011.44.1346.529268',
-	STR_TO_DATE('23-FEB-2000', '%d-%M-%Y'),
+	TO_DATE('23-FEB-2000', 'dd-MON-yyyy'),
 	'SA_REP',
 	6800,
 	.1,
@@ -1904,7 +1875,7 @@ VALUES (
 	'Ande',
 	'SANDE',
 	'011.44.1346.629268',
-	STR_TO_DATE('24-MAR-2000', '%d-%M-%Y'),
+	TO_DATE('24-MAR-2000', 'dd-MON-yyyy'),
 	'SA_REP',
 	6400,
 	.10,
@@ -1919,7 +1890,7 @@ VALUES (
 	'Banda',
 	'ABANDA',
 	'011.44.1346.729268',
-	STR_TO_DATE('21-APR-2000', '%d-%M-%Y'),
+	TO_DATE('21-APR-2000', 'dd-MON-yyyy'),
 	'SA_REP',
 	6200,
 	.10,
@@ -1934,7 +1905,7 @@ VALUES (
 	'Ozer',
 	'LOZER',
 	'011.44.1343.929268',
-	STR_TO_DATE('11-MAR-1997', '%d-%M-%Y'),
+	TO_DATE('11-MAR-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	11500,
 	.25,
@@ -1949,7 +1920,7 @@ VALUES (
 	'Bloom',
 	'HBLOOM',
 	'011.44.1343.829268',
-	STR_TO_DATE('23-MAR-1998', '%d-%M-%Y'),
+	TO_DATE('23-MAR-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	10000,
 	.20,
@@ -1964,7 +1935,7 @@ VALUES (
 	'Fox',
 	'TFOX',
 	'011.44.1343.729268',
-	STR_TO_DATE('24-JAN-1998', '%d-%M-%Y'),
+	TO_DATE('24-JAN-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	9600,
 	.20,
@@ -1979,7 +1950,7 @@ VALUES (
 	'Smith',
 	'WSMITH',
 	'011.44.1343.629268',
-	STR_TO_DATE('23-FEB-1999', '%d-%M-%Y'),
+	TO_DATE('23-FEB-1999', 'dd-MON-yyyy'),
 	'SA_REP',
 	7400,
 	.15,
@@ -1994,7 +1965,7 @@ VALUES (
 	'Bates',
 	'EBATES',
 	'011.44.1343.529268',
-	STR_TO_DATE('24-MAR-1999', '%d-%M-%Y'),
+	TO_DATE('24-MAR-1999', 'dd-MON-yyyy'),
 	'SA_REP',
 	7300,
 	.15,
@@ -2009,7 +1980,7 @@ VALUES (
 	'Kumar',
 	'SKUMAR',
 	'011.44.1343.329268',
-	STR_TO_DATE('21-APR-2000', '%d-%M-%Y'),
+	TO_DATE('21-APR-2000', 'dd-MON-yyyy'),
 	'SA_REP',
 	6100,
 	.10,
@@ -2024,7 +1995,7 @@ VALUES (
 	'Abel',
 	'EABEL',
 	'011.44.1644.429267',
-	STR_TO_DATE('11-MAY-1996', '%d-%M-%Y'),
+	TO_DATE('11-MAY-1996', 'dd-MON-yyyy'),
 	'SA_REP',
 	11000,
 	.30,
@@ -2039,7 +2010,7 @@ VALUES (
 	'Hutton',
 	'AHUTTON',
 	'011.44.1644.429266',
-	STR_TO_DATE('19-MAR-1997', '%d-%M-%Y'),
+	TO_DATE('19-MAR-1997', 'dd-MON-yyyy'),
 	'SA_REP',
 	8800,
 	.25,
@@ -2054,7 +2025,7 @@ VALUES (
 	'Taylor',
 	'JTAYLOR',
 	'011.44.1644.429265',
-	STR_TO_DATE('24-MAR-1998', '%d-%M-%Y'),
+	TO_DATE('24-MAR-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	8600,
 	.20,
@@ -2069,7 +2040,7 @@ VALUES (
 	'Livingston',
 	'JLIVINGS',
 	'011.44.1644.429264',
-	STR_TO_DATE('23-APR-1998', '%d-%M-%Y'),
+	TO_DATE('23-APR-1998', 'dd-MON-yyyy'),
 	'SA_REP',
 	8400,
 	.20,
@@ -2084,7 +2055,7 @@ VALUES (
 	'Grant',
 	'KGRANT',
 	'011.44.1644.429263',
-	STR_TO_DATE('24-MAY-1999', '%d-%M-%Y'),
+	TO_DATE('24-MAY-1999', 'dd-MON-yyyy'),
 	'SA_REP',
 	7000,
 	.15,
@@ -2099,7 +2070,7 @@ VALUES (
 	'Johnson',
 	'CJOHNSON',
 	'011.44.1644.429262',
-	STR_TO_DATE('04-JAN-2000', '%d-%M-%Y'),
+	TO_DATE('04-JAN-2000', 'dd-MON-yyyy'),
 	'SA_REP',
 	6200,
 	.10,
@@ -2114,7 +2085,7 @@ VALUES (
 	'Taylor',
 	'WTAYLOR',
 	'650.507.9876',
-	STR_TO_DATE('24-JAN-1998', '%d-%M-%Y'),
+	TO_DATE('24-JAN-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3200,
 	NULL,
@@ -2129,7 +2100,7 @@ VALUES (
 	'Fleaur',
 	'JFLEAUR',
 	'650.507.9877',
-	STR_TO_DATE('23-FEB-1998', '%d-%M-%Y'),
+	TO_DATE('23-FEB-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3100,
 	NULL,
@@ -2144,7 +2115,7 @@ VALUES (
 	'Sullivan',
 	'MSULLIVA',
 	'650.507.9878',
-	STR_TO_DATE('21-JUN-1999', '%d-%M-%Y'),
+	TO_DATE('21-JUN-1999', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2500,
 	NULL,
@@ -2159,7 +2130,7 @@ VALUES (
 	'Geoni',
 	'GGEONI',
 	'650.507.9879',
-	STR_TO_DATE('03-FEB-2000', '%d-%M-%Y'),
+	TO_DATE('03-FEB-2000', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2800,
 	NULL,
@@ -2174,7 +2145,7 @@ VALUES (
 	'Sarchand',
 	'NSARCHAN',
 	'650.509.1876',
-	STR_TO_DATE('27-JAN-1996', '%d-%M-%Y'),
+	TO_DATE('27-JAN-1996', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	4200,
 	NULL,
@@ -2189,7 +2160,7 @@ VALUES (
 	'Bull',
 	'ABULL',
 	'650.509.2876',
-	STR_TO_DATE('20-FEB-1997', '%d-%M-%Y'),
+	TO_DATE('20-FEB-1997', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	4100,
 	NULL,
@@ -2204,7 +2175,7 @@ VALUES (
 	'Dellinger',
 	'JDELLING',
 	'650.509.3876',
-	STR_TO_DATE('24-JUN-1998', '%d-%M-%Y'),
+	TO_DATE('24-JUN-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3400,
 	NULL,
@@ -2219,7 +2190,7 @@ VALUES (
 	'Cabrio',
 	'ACABRIO',
 	'650.509.4876',
-	STR_TO_DATE('07-FEB-1999', '%d-%M-%Y'),
+	TO_DATE('07-FEB-1999', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3000,
 	NULL,
@@ -2234,7 +2205,7 @@ VALUES (
 	'Chung',
 	'KCHUNG',
 	'650.505.1876',
-	STR_TO_DATE('14-JUN-1997', '%d-%M-%Y'),
+	TO_DATE('14-JUN-1997', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3800,
 	NULL,
@@ -2249,7 +2220,7 @@ VALUES (
 	'Dilly',
 	'JDILLY',
 	'650.505.2876',
-	STR_TO_DATE('13-AUG-1997', '%d-%M-%Y'),
+	TO_DATE('13-AUG-1997', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3600,
 	NULL,
@@ -2264,7 +2235,7 @@ VALUES (
 	'Gates',
 	'TGATES',
 	'650.505.3876',
-	STR_TO_DATE('11-JUL-1998', '%d-%M-%Y'),
+	TO_DATE('11-JUL-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2900,
 	NULL,
@@ -2279,7 +2250,7 @@ VALUES (
 	'Perkins',
 	'RPERKINS',
 	'650.505.4876',
-	STR_TO_DATE('19-DEC-1999', '%d-%M-%Y'),
+	TO_DATE('19-DEC-1999', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2500,
 	NULL,
@@ -2294,7 +2265,7 @@ VALUES (
 	'Bell',
 	'SBELL',
 	'650.501.1876',
-	STR_TO_DATE('04-FEB-1996', '%d-%M-%Y'),
+	TO_DATE('04-FEB-1996', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	4000,
 	NULL,
@@ -2309,7 +2280,7 @@ VALUES (
 	'Everett',
 	'BEVERETT',
 	'650.501.2876',
-	STR_TO_DATE('03-MAR-1997', '%d-%M-%Y'),
+	TO_DATE('03-MAR-1997', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3900,
 	NULL,
@@ -2324,7 +2295,7 @@ VALUES (
 	'McCain',
 	'SMCCAIN',
 	'650.501.3876',
-	STR_TO_DATE('01-JUL-1998', '%d-%M-%Y'),
+	TO_DATE('01-JUL-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3200,
 	NULL,
@@ -2339,7 +2310,7 @@ VALUES (
 	'Jones',
 	'VJONES',
 	'650.501.4876',
-	STR_TO_DATE('17-MAR-1999', '%d-%M-%Y'),
+	TO_DATE('17-MAR-1999', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2800,
 	NULL,
@@ -2354,7 +2325,7 @@ VALUES (
 	'Walsh',
 	'AWALSH',
 	'650.507.9811',
-	STR_TO_DATE('24-APR-1998', '%d-%M-%Y'),
+	TO_DATE('24-APR-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3100,
 	NULL,
@@ -2369,7 +2340,7 @@ VALUES (
 	'Feeney',
 	'KFEENEY',
 	'650.507.9822',
-	STR_TO_DATE('23-MAY-1998', '%d-%M-%Y'),
+	TO_DATE('23-MAY-1998', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	3000,
 	NULL,
@@ -2384,7 +2355,7 @@ VALUES (
 	'OConnell',
 	'DOCONNEL',
 	'650.507.9833',
-	STR_TO_DATE('21-JUN-1999', '%d-%M-%Y'),
+	TO_DATE('21-JUN-1999', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2600,
 	NULL,
@@ -2399,7 +2370,7 @@ VALUES (
 	'Grant',
 	'DGRANT',
 	'650.507.9844',
-	STR_TO_DATE('13-JAN-2000', '%d-%M-%Y'),
+	TO_DATE('13-JAN-2000', 'dd-MON-yyyy'),
 	'SH_CLERK',
 	2600,
 	NULL,
@@ -2414,7 +2385,7 @@ VALUES (
 	'Whalen',
 	'JWHALEN',
 	'515.123.4444',
-	STR_TO_DATE('17-SEP-1987', '%d-%M-%Y'),
+	TO_DATE('17-SEP-1987', 'dd-MON-yyyy'),
 	'AD_ASST',
 	4400,
 	NULL,
@@ -2429,7 +2400,7 @@ VALUES (
 	'Hartstein',
 	'MHARTSTE',
 	'515.123.5555',
-	STR_TO_DATE('17-FEB-1996', '%d-%M-%Y'),
+	TO_DATE('17-FEB-1996', 'dd-MON-yyyy'),
 	'MK_MAN',
 	13000,
 	NULL,
@@ -2444,7 +2415,7 @@ VALUES (
 	'Fay',
 	'PFAY',
 	'603.123.6666',
-	STR_TO_DATE('17-AUG-1997', '%d-%M-%Y'),
+	TO_DATE('17-AUG-1997', 'dd-MON-yyyy'),
 	'MK_REP',
 	6000,
 	NULL,
@@ -2459,7 +2430,7 @@ VALUES (
 	'Mavris',
 	'SMAVRIS',
 	'515.123.7777',
-	STR_TO_DATE('07-JUN-1994', '%d-%M-%Y'),
+	TO_DATE('07-JUN-1994', 'dd-MON-yyyy'),
 	'HR_REP',
 	6500,
 	NULL,
@@ -2474,7 +2445,7 @@ VALUES (
 	'Baer',
 	'HBAER',
 	'515.123.8888',
-	STR_TO_DATE('07-JUN-1994', '%d-%M-%Y'),
+	TO_DATE('07-JUN-1994', 'dd-MON-yyyy'),
 	'PR_REP',
 	10000,
 	NULL,
@@ -2489,7 +2460,7 @@ VALUES (
 	'Higgins',
 	'SHIGGINS',
 	'515.123.8080',
-	STR_TO_DATE('07-JUN-1994', '%d-%M-%Y'),
+	TO_DATE('07-JUN-1994', 'dd-MON-yyyy'),
 	'AC_MGR',
 	12000,
 	NULL,
@@ -2504,7 +2475,7 @@ VALUES (
 	'Gietz',
 	'WGIETZ',
 	'51hr5.123.8181',
-	STR_TO_DATE('07-JUN-1994', '%d-%M-%Y'),
+	TO_DATE('07-JUN-1994', 'dd-MON-yyyy'),
 	'AC_ACCOUNT',
 	8300,
 	NULL,
@@ -2517,8 +2488,8 @@ COMMIT;
 INSERT INTO job_history
 VALUES (
 	102,
-	STR_TO_DATE('13-Jan-1993', '%d-%M-%Y'),
-	STR_TO_DATE('24-Jul-1998', '%d-%M-%Y'),
+	TO_DATE('13-Jan-1993', 'dd-MON-yyyy'),
+	TO_DATE('24-Jul-1998', 'dd-MON-yyyy'),
 	'IT_PROG',
 	60
 	);
@@ -2526,8 +2497,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	101,
-	STR_TO_DATE('21-Sep-1989', '%d-%M-%Y'),
-	STR_TO_DATE('27-Oct-1993', '%d-%M-%Y'),
+	TO_DATE('21-Sep-1989', 'dd-MON-yyyy'),
+	TO_DATE('27-Oct-1993', 'dd-MON-yyyy'),
 	'AC_ACCOUNT',
 	110
 	);
@@ -2535,8 +2506,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	101,
-	STR_TO_DATE('28-Oct-1993','%d-%M-%Y'),
-	STR_TO_DATE('15-Mar-1997','%d-%M-%Y'),
+	TO_DATE('28-Oct-1993','dd-MON-yyyy'),
+	TO_DATE('15-Mar-1997','dd-MON-yyyy'),
 	'AC_MGR',
 	110
 	);
@@ -2544,8 +2515,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	201,
-	STR_TO_DATE('27-Feb-1996','%d-%M-%Y'),
-	STR_TO_DATE('19-Dec-1999','%d-%M-%Y'),
+	TO_DATE('27-Feb-1996','dd-MON-yyyy'),
+	TO_DATE('19-Dec-1999','dd-MON-yyyy'),
 	'MK_REP',
 	20
 	);
@@ -2553,8 +2524,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	114,
-	STR_TO_DATE('24-Mar-1998','%d-%M-%Y'),
-	STR_TO_DATE('31-Dec-1999','%d-%M-%Y'),
+	TO_DATE('24-Mar-1998','dd-MON-yyyy'),
+	TO_DATE('31-Dec-1999','dd-MON-yyyy'),
 	'ST_CLERK',
 	50
 	);
@@ -2562,8 +2533,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	122,
-	STR_TO_DATE('01-Jan-1999','%d-%M-%Y'),
-	STR_TO_DATE('31-Dec-1999','%d-%M-%Y'),
+	TO_DATE('01-Jan-1999','dd-MON-yyyy'),
+	TO_DATE('31-Dec-1999','dd-MON-yyyy'),
 	'ST_CLERK',
 	50
 	);
@@ -2571,8 +2542,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	200,
-	STR_TO_DATE('17-Sep-1987','%d-%M-%Y'),
-	STR_TO_DATE('17-Jun-1993','%d-%M-%Y'),
+	TO_DATE('17-Sep-1987','dd-MON-yyyy'),
+	TO_DATE('17-Jun-1993','dd-MON-yyyy'),
 	'AD_ASST',
 	90
 	);
@@ -2580,8 +2551,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	176,
-	STR_TO_DATE('24-Mar-1998','%d-%M-%Y'),
-	STR_TO_DATE('31-Dec-1998','%d-%M-%Y'),
+	TO_DATE('24-Mar-1998','dd-MON-yyyy'),
+	TO_DATE('31-Dec-1998','dd-MON-yyyy'),
 	'SA_REP',
 	80
 	);
@@ -2589,8 +2560,8 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	176,
-	STR_TO_DATE('01-Jan-1999','%d-%M-%Y'),
-	STR_TO_DATE('31-Dec-1999','%d-%M-%Y'),
+	TO_DATE('01-Jan-1999','dd-MON-yyyy'),
+	TO_DATE('31-Dec-1999','dd-MON-yyyy'),
 	'SA_MAN',
 	80
 	);
@@ -2598,25 +2569,47 @@ VALUES (
 INSERT INTO job_history
 VALUES (
 	200,
-	STR_TO_DATE('01-Jul-1994','%d-%M-%Y'),
-	STR_TO_DATE('31-Dec-1998','%d-%M-%Y'),
+	TO_DATE('01-Jul-1994','dd-MON-yyyy'),
+	TO_DATE('31-Dec-1998','dd-MON-yyyy'),
 	'AC_ACCOUNT',
 	90
 	);
-    
+
+ALTER TABLE DEPARTMENTS ADD CONSTRAINT dept_mgr_fk
+                 FOREIGN KEY (manager_id)
+                  REFERENCES employees (employee_id);
+
+CREATE INDEX emp_department_ix
+       ON employees (department_id);
+
+CREATE INDEX emp_job_ix
+       ON employees (job_id);
+
+CREATE INDEX emp_manager_ix
+       ON employees (manager_id);
+
+CREATE INDEX emp_name_ix
+       ON employees (last_name, first_name);
+
+CREATE INDEX dept_location_ix
+       ON departments (location_id);
+
+CREATE INDEX jhist_job_ix
+       ON job_history (job_id);
+
+CREATE INDEX jhist_employee_ix
+       ON job_history (employee_id);
+
+CREATE INDEX jhist_department_ix
+       ON job_history (department_id);
+
+CREATE INDEX loc_city_ix
+       ON locations (city);
+
+CREATE INDEX loc_state_province_ix      
+       ON locations (state_province);
+
+CREATE INDEX loc_country_ix
+       ON locations (country_id);
+
 COMMIT;
-
-/* *************************************************************** 
-***************************FOREIGN KEYS***************************
-**************************************************************** */
-
-ALTER TABLE countries ADD FOREIGN KEY (region_id) REFERENCES regions(region_id);    
-ALTER TABLE locations ADD FOREIGN KEY (country_id) REFERENCES countries(country_id);
-ALTER TABLE departments ADD FOREIGN KEY (location_id) REFERENCES locations(location_id);
-ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id);
-ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
-ALTER TABLE employees ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
-ALTER TABLE departments ADD FOREIGN KEY (manager_id) REFERENCES employees (employee_id);
-ALTER TABLE job_history ADD FOREIGN KEY (employee_id) REFERENCES employees(employee_id);
-ALTER TABLE job_history ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id);
-ALTER TABLE job_history ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);

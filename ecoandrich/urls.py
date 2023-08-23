@@ -5,11 +5,14 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import routers
 from employee.views import EmployeeViewSet, LocationViewSet, DepartmentViewSet
+from ChatGPT.views import GPTViewSet
+
 
 router = routers.DefaultRouter()
 router.register(r'employees', EmployeeViewSet, basename='employee')
 router.register(r'locations', LocationViewSet, basename='location')
 router.register(r'departments', DepartmentViewSet, basename='department')
+router.register(r'gpt', GPTViewSet, basename='gpt')
 
 schema_view = get_schema_view(
     openapi.Info(

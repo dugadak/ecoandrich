@@ -15,12 +15,16 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+try:
+    from secret_settings import SECRET_KEY, OPENAI_API_KEY
+except ImportError:
+    SECRET_KEY = 'default-secret-key'
+    OPENAI_API_KEY = 'default-OPENAI-API-key'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l*qw^bpz8^4(+69)gx)n-qxt_+4jxgkfm!e(th$5*41!6ou2xn'
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -40,6 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'employee',
+    'ChatGPT',
 ]
 
 MIDDLEWARE = [
@@ -136,3 +141,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+

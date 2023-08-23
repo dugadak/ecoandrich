@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'employee',
+    'ChatGPT',
 ]
 
 MIDDLEWARE = [
@@ -136,3 +137,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+OPENAI_API_KEY = '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'

@@ -20,4 +20,4 @@
 2. 해당 파일은 별도 메일로 발송되었습니다.
 
 # 문의
-- 추가 문의나 지원이 필요한 경우 [support@example.com](mailto:support@example.com)로 연락 바랍니다.
+- 추가 문의나 지원이 필요한 경우 [yya71bbt@naver.com](mailto:yya71bb@naver.com)로 연락 바랍니다.

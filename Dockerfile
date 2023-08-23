@@ -12,6 +12,3 @@ RUN pip install -r requirements.txt
 
 # PostgreSQL 클라이언트 설치
 RUN apt-get update && apt-get install -y postgresql-client
-
-# 컨테이너 실행 시 실행할 명령 설정
-CMD python manage.py runserver 0.0.0.0:8000
